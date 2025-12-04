@@ -1,125 +1,206 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
 
-import "../css/pages/Signup.css";
-import sweetyLogo from "../assets/sweety-logo.svg";
+import s from "../css/pages/TrackOrder.module.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEnvelope, faKey, faPhone, faUser, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import {
+    faBox,
+    faTruck,
+    faCheckCircle,
+    faClock,
+    faEye,
+    faSpinner,
+    faEyeSlash,
+} from "@fortawesome/free-solid-svg-icons";
 
-import Input from "../components/Input.jsx";
-import PasswordStrengthMeter from "../components/PasswordStrengthMeter.jsx";
+import NavBar from "../components/NavBar.jsx";
+import Footer from "../components/Footer.jsx";
+import { useOrderStore } from "../store/orderStore.js";
 
-import { useAuthStore } from "../store/authStore.js";
-
-function Signup() {
-    const [fullName, setFullName] = useState("");
-    const [phoneNumber, setPhoneNumber] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [passwordError, setPasswordError] = useState("");
-
-    const navigate = useNavigate();
-
-    const { signup, error, isLoading, clearError } = useAuthStore();
+function TrackOrder() {
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const { orders, getOrders, isLoading } = useOrderStore();
 
     useEffect(() => {
-        clearError();
-    }, [clearError]);
+        getOrders();
+    }, [getOrders]);
 
-    const handleInputChange = (setter) => (e) => {
-        if (error) clearError();
-        setter(e.target.value);
-    };
+    const getStatusIcon = (status) => {
+        const iconProps = { size: 20, className: "text-amber-400" };
 
-    const handlePasswordChange = (e) => {
-        const newPassword = e.target.value;
-        if (error) clearError();
-        setPassword(newPassword);
-
-        if (passwordError) setPasswordError("");
-    };
-
-    const validatePassword = () => {
-        if (password.length < 6) {
-            setPasswordError("Password must be at least 6 characters long");
-            return false;
-        }
-        setPasswordError("");
-        return true;
-    };
-
-    const handleSignUp = async (e) => {
-        e.preventDefault();
-
-        if (!validatePassword()) {
-            return;
-        }
-
-        try {
-            await signup(fullName, phoneNumber, email, password, confirmPassword);
-            navigate("/email-verification");
-        } catch (err) {
-            console.error(err);
+        switch (status) {
+            case "placed":
+                return <FontAwesomeIcon style={{ color: "#80ef80" }} icon={faCheckCircle} {...iconProps} />;
+            case "shipped":
+                return <FontAwesomeIcon icon={faTruck} {...iconProps} />;
+            case "delivered":
+                return <FontAwesomeIcon icon={faBox} {...iconProps} />;
         }
     };
+
+    const formatDate = (dateString) => {
+        return new Date(dateString).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    };
+
+    const handleViewDetails = (order) => {
+        setSelectedOrder(selectedOrder?._id === order._id ? null : order);
+    };
+
+    if (isLoading) {
+        return (
+            <div className="page-container">
+                <div className="loading-layout">
+                    <FontAwesomeIcon className="loading-layout-icon" icon={faSpinner} />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>
-            <title>Signup | Sweety</title>
+            <title>Track Orders | Sweety</title>
 
-            <div className="page-container signup-container">
-                <a href="/home">
-                    <img className="logo" src={sweetyLogo} alt="Sweety Logo" />
-                </a>
+            <div className="page-container">
+                <NavBar />
 
-                <div className="signup-modal">
-                    <div className="signup-title">
-                        <h2>Sign Up</h2>
+                <div className={s.orderTrackContainer}>
+                    {/* Header */}
+                    <div className={s.orderTrackHeader}>
+                        <h1>Your Orders</h1>
+                        <p>Track all your orders</p>
                     </div>
 
-                    <form className="signup-form" onSubmit={handleSignUp}>
-                        <label htmlFor="">Full Name</label>
-                        <Input icon={faUser} type="text" value={fullName} onChange={handleInputChange(setFullName)} />
+                    {/* Orders List */}
+                    <div className={s.orderTrackList}>
+                        {!orders || orders.length === 0 ? (
+                            <div className={s.orderTrackNotFoundContainer}>
+                                <FontAwesomeIcon icon={faBox} size="3x" className={s.boxIcon} />
+                                <h3>No Orders Found</h3>
+                                <p>You don't have any orders yet.</p>
+                            </div>
+                        ) : (
+                            orders.map((order) => (
+                                <div key={order._id} className={s.orderTrackCard}>
+                                    {/* Order Summary */}
+                                    <div className={s.orderTrackSummary}>
+                                        <div className={s.orderTrackSummaryWrapper}>
+                                            <div className={s.orderTrackStatusContainer}>
+                                                <div className={s.orderTrackStatus}>
+                                                    {getStatusIcon(order.orderStatus)}
+                                                    <span>{order.orderStatus}</span>
+                                                </div>
+                                                <div className={s.orderTrackLine}></div>
+                                                <span className={s.orderTrackId}>{order.trackingId}</span>
+                                            </div>
 
-                        <label htmlFor="">Phone Number</label>
-                        <Input
-                            icon={faPhone}
-                            type="tel"
-                            value={phoneNumber}
-                            onChange={handleInputChange(setPhoneNumber)}
-                        />
+                                            <button
+                                                onClick={() => handleViewDetails(order)}
+                                                className={s.orderTrackDetailsButton}
+                                            >
+                                                {selectedOrder?._id === order._id ? (
+                                                    <div>
+                                                        <FontAwesomeIcon className={s.eyeIcon} icon={faEye} size="sm" />
 
-                        <label htmlFor="">Email</label>
-                        <Input icon={faEnvelope} type="text" value={email} onChange={handleInputChange(setEmail)} />
+                                                        <span>Hide Details</span>
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <FontAwesomeIcon
+                                                            className={s.eyeIcon}
+                                                            icon={faEyeSlash}
+                                                            size="sm"
+                                                        />
 
-                        <label htmlFor="">Password</label>
-                        <Input icon={faKey} type="password" value={password} onChange={handlePasswordChange} />
-                        <PasswordStrengthMeter password={password} />
+                                                        <span>View Details</span>
+                                                    </div>
+                                                )}
+                                            </button>
+                                        </div>
 
-                        <label htmlFor="">Confirm Password</label>
-                        <Input
-                            icon={faKey}
-                            type="password"
-                            value={confirmPassword}
-                            onChange={handleInputChange(setConfirmPassword)}
-                        />
+                                        <div className={s.orderTrackInfo}>
+                                            <div>
+                                                <p className={s.orderTrackInfoLabel}>Order Date</p>
+                                                <p className={s.orderTrackInfoValue}>{formatDate(order.placedTime)}</p>
+                                            </div>
 
-                        {passwordError && <p className="error-message">{passwordError}</p>}
-                        {error && <p className="error-message">{error}</p>}
+                                            <div>
+                                                <p className={s.orderTrackInfoLabel}>Total Quantity</p>
+                                                <p className={s.orderTrackInfoValue}>
+                                                    {order.totalQuantity} item{order.totalQuantity !== 1 ? "s" : ""}
+                                                </p>
+                                            </div>
 
-                        <button type="submit" className="signup-button" disabled={isLoading}>
-                            {isLoading ? <FontAwesomeIcon className="loading" icon={faSpinner} /> : "Sign Up"}
-                        </button>
-                    </form>
+                                            <div>
+                                                <p className={s.orderTrackInfoLabel}>Total Amount</p>
+                                                <p className={s.orderTrackInfoValue}>${order.totalAmount.toFixed(2)}</p>
+                                            </div>
 
-                    <p className="signup-account">
-                        Already have an account? <a href="/login">Sign In</a>
-                    </p>
+                                            <div>
+                                                <p className={s.orderTrackInfoLabel}>Delivery Address</p>
+                                                <p className={s.orderTrackInfoValue}>{order.address}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Order Details (Expandable) - ALWAYS RENDERED */}
+                                    <div
+                                        className={`${s.orderTrackOrderDetailsContainer} ${
+                                            selectedOrder?._id === order._id ? s.expanded : ""
+                                        }`}
+                                    >
+                                        <div className={s.orderTrackOrderDetailsWrapper}>
+                                            {/* Order Items */}
+                                            <div>
+                                                <h4 className={s.orderItemsTitle}>Order Items</h4>
+                                                <div className={s.orderItemsList}>
+                                                    {order.cartItems.map((item, index) => (
+                                                        <div key={index} className={s.orderItemCard}>
+                                                            <div className={s.orderItemLeft}>
+                                                                <div className={s.orderItemImageContainer}>
+                                                                    <img
+                                                                        src={item.product.imageURL}
+                                                                        alt={`${item.product.imageURL}`}
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <h5 className={s.orderItemName}>
+                                                                        {item.product.name}
+                                                                    </h5>
+                                                                    <p className={s.orderItemQuantity}>
+                                                                        Quantity: {item.quantity}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className={s.orderItemPriceContainer}>
+                                                                <p className={s.orderItemTotalPrice}>
+                                                                    ${(item.price * item.quantity).toFixed(2)}
+                                                                </p>
+                                                                <p className={s.orderItemUnitPrice}>
+                                                                    ${item.price.toFixed(2)} each
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
+
+                <Footer />
             </div>
         </>
     );
 }
 
-export default Signup;
+export default TrackOrder;
